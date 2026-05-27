@@ -8,7 +8,7 @@
 pm init vite 创建项目，安装 ol、chart.js、echarts、axios 等核心依赖，配置了双页面入口（index.html 主系统页 + 
 aster-map.html 栅格地图页）。
 
-地图方面，申请了天地图 API 密钥，成功加载了在线底图（vec_w）和中文标注图层（cva_w），并将 OpenLayers 视图范围约束在中国区域内。
+地图方面，申请了天地图 API 密钥，成功加载了在线底图（vec_w）和中文标注图层（cva_w），并将 OpenLayers 视图范围约束在中国区域内。同时将组员提供的 `counties.geojson` 放入 `/public` 目录，完成矢量加载与样式设置（蓝色描边 + 半透明填充），地图基础架构搭建完毕。
 
 ---
 
