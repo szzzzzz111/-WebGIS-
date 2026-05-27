@@ -1,0 +1,17 @@
+﻿# runtime / local env
+.env
+venv/
+__pycache__/
+*.pyc
+*.log
+.DS_Store
+
+# large generated data and local databases
+data/raster/
+data/uploads/
+data/vector/
+*.db
+*.backup.*.db
+
+# macOS archive metadata
+__MACOSX/
