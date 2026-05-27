@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>土地利用动态变化展示系统</title>
+    <link rel="stylesheet" href="/src/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.3.0/ol.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 顶部标题栏 -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="title">土地利用动态变化展示系统</h1>
+                <p class="subtitle">时空演变分析平台</p>
+            </div>
+        </header>
+
+        <!-- 主内容区 -->
+        <main class="main-container">
+            <!-- 左侧控制面板 -->
+            <aside class="control-panel">
+                <div class="panel-header">
+                    <h3>控制面板</h3>
+                </div>
+                <div class="panel-content">
+                    <!-- 图例说明 -->
+                    <section class="control-section">
+                        <h4>地图信息</h4>
+                        <div style="font-size:0.85rem;color:#666;line-height:1.8;">
+                            <p>底图：天地图在线服务</p>
+                            <p>矢量数据：全国区县边界</p>
+                            <p>数据来源：本地GeoJSON</p>
+                            <p>要素数量：2,870个</p>
+                        </div>
+                    </section>
+                </div>
+            </aside>
+
+            <!-- 地图容器 -->
+            <div class="map-area">
+                <div id="map" class="map"></div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
