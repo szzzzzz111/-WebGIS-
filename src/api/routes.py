@@ -11,6 +11,37 @@ api_bp = Blueprint('api', __name__)
 # 记录服务启动时间
 _start_time = time.time()
 
+def _json_error(message, status_code=400, **extra):
+    """统一API错误返回格式，便于前端联调和接口测试。"""
+    payload = {
+        "error": message,
+        "details": message,
+        "code": status_code
+    }
+    payload.update(extra)
+    return jsonify(payload), status_code
+
+def _parse_int_arg(name, required=False):
+    """读取并校验整数查询参数。"""
+    raw_value = request.args.get(name)
+    if raw_value is None or raw_value == "":
+        if required:
+            return None, f"缺少必要参数: {name}"
+        return None, None
+    try:
+        return int(raw_value), None
+    except ValueError:
+        return None, f"{name} 必须为整数"
+
+def _parse_county_id(required=False):
+    """读取并清理县区ID参数。"""
+    county_id = request.args.get('county_id', type=str)
+    if county_id is None or county_id.strip() == "":
+        if required:
+            return None, "缺少必要参数: county_id"
+        return None, None
+    return county_id.strip(), None
+
 @api_bp.route('/landuse', methods=['GET'])
 def get_landuse_data_route():
     """
@@ -31,8 +62,13 @@ def get_landuse_data_route():
     data_processor = current_app.data_processor
     landuse_data_storage = data_processor.get_aggregated_landuse_data()
     
-    county_id = request.args.get('county_id', type=str)
-    year = request.args.get('year', type=int)
+    county_id, county_error = _parse_county_id(required=False)
+    if county_error:
+        return _json_error(county_error, 400)
+
+    year, year_error = _parse_int_arg('year', required=False)
+    if year_error:
+        return _json_error(year_error, 400)
 
     # 如果没有指定county_id，返回所有县的数据
     if county_id is None:
@@ -60,14 +96,13 @@ def get_landuse_data_route():
             return jsonify(result), 200
     
     # 查询指定县的数据
-    county_id = county_id.strip()
     county_data = landuse_data_storage.get(county_id, {})
     
     if year:
         # 返回指定年份的数据
         data = county_data.get(year, {})
         if not data:
-            return jsonify({'error': '未找到指定县区或年份的数据'}), 404
+            return _json_error('未找到指定县区或年份的数据', 404)
         
         return jsonify({
             'county_id': county_id,
@@ -77,7 +112,7 @@ def get_landuse_data_route():
     else:
         # 返回该县所有年份的数据
         if not county_data:
-            return jsonify({'error': '未找到指定县区的数据'}), 404
+            return _json_error('未找到指定县区的数据', 404)
         
         result = []
         for yr, land_data in county_data.items():
@@ -114,15 +149,20 @@ def get_change_indices_route():
         400: 参数错误
         404: 数据不足
     """
-    county_id = request.args.get('county_id', type=str)
-    start_year = request.args.get('start_year', type=int)
-    end_year = request.args.get('end_year', type=int)
+    county_id, county_error = _parse_county_id(required=True)
+    if county_error:
+        return _json_error(county_error, 400)
 
-    if not all([county_id, start_year, end_year]):
-        return jsonify({'error': '缺少必要参数: county_id, start_year, end_year'}), 400
-    
+    start_year, start_error = _parse_int_arg('start_year', required=True)
+    if start_error:
+        return _json_error(start_error, 400)
+
+    end_year, end_error = _parse_int_arg('end_year', required=True)
+    if end_error:
+        return _json_error(end_error, 400)
+
     if start_year >= end_year:
-        return jsonify({"error": "start_year must be less than end_year"}), 400
+        return _json_error("start_year must be less than end_year", 400)
 
     data_processor = current_app.data_processor
     land_use_analyzer = current_app.land_use_analyzer
@@ -137,9 +177,9 @@ def get_change_indices_route():
     
     if not start_data or not end_data:
         logging.warning(f"Not enough data to calculate indices for county_id={county_id} between {start_year} and {end_year}")
-        return jsonify({'error': f"Not enough data to calculate indices for county {county_id} between {start_year} and {end_year}"}), 404
+        return _json_error(f"Not enough data to calculate indices for county {county_id} between {start_year} and {end_year}", 404)
 
-    indices = land_use_analyzer._calculate_all_indices(start_data, end_data, years_diff)
+    indices = land_use_analyzer.calculate_change_indices(start_data, end_data, years_diff)
     
     return jsonify({
         'county_id': county_id,

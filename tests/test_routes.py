@@ -46,7 +46,7 @@ class TestLandUseRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("Missing year parameter", data['details'])
 
-    def test_get_landuse_dat-invalid_year(self):
+    def test_get_landuse_data_invalid_year(self):
         response = self.app.get('/api/landuse?county_id=110101&year=abc')
         data = json.loads(response.data)
         self.assertEqual(response.status_code, 400)

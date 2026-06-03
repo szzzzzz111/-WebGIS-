@@ -173,6 +173,17 @@ class LandUseAnalyzer:
         
         return indices
 
+    def calculate_change_indices(self, start_data: dict[str, float], end_data: dict[str, float], years: int) -> dict:
+        """
+        对外提供的变化指数计算入口。
+
+        第14周整理内容：将路由层原本直接调用的私有计算方法封装为公开方法，
+        便于后续接口联调、单元测试和文档说明。
+        """
+        if years <= 0:
+            raise ValueError("years must be greater than 0")
+        return self._calculate_all_indices(start_data, end_data, years)
+
     def land_use_transition_matrix(self, start_data: dict[str, float], end_data: dict[str, float]) -> dict[str, dict[str, float]]:
         """
         计算土地利用转移矩阵。

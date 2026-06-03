@@ -140,6 +140,18 @@ class TestLandUseAnalyzer(unittest.TestCase):
         self.assertAlmostEqual(matrix['水域']['建设用地'], 0.0)
         self.assertAlmostEqual(matrix['水域']['水域'], 0.0) # No initial area for water
 
+    def test_calculate_change_indices_public_entry(self):
+        start_data = {'耕地': 100.0, '建设用地': 50.0}
+        end_data = {'耕地': 80.0, '建设用地': 70.0}
+
+        indices = self.analyzer.calculate_change_indices(start_data, end_data, 20)
+
+        self.assertIn('耕地', indices)
+        self.assertIn('建设用地', indices)
+        self.assertIn('comprehensive_index', indices)
+        self.assertIn('diversity_index', indices)
+        self.assertAlmostEqual(indices['耕地']['change_rate'], -20.0)
+
 class TestDataProcessor(unittest.TestCase):
 
     def setUp(self):
