@@ -20,6 +20,7 @@ class LandUseApp {
         try {
             console.log('开始初始化土地利用展示系统...');
             await this.initMap();
+            this.bindEvents();
             console.log('土地利用展示系统初始化完成');
         } catch (error) {
             console.error('系统初始化失败:', error);
@@ -27,13 +28,21 @@ class LandUseApp {
         }
     }
 
+    bindEvents() {
+        // 打开栅格地图页面
+        const btn = document.getElementById('open-raster-map');
+        if (btn) {
+            btn.addEventListener('click', () => {
+                window.location.href = '/raster-map.html';
+            });
+        }
+    }
+
     async initMap() {
         console.log('初始化地图...');
 
-        // 天地图密钥
         const TDT_KEY = 'b955032aede58df4e97af042b56417e9';
 
-        // 在线底图（天地图矢量底图）
         const baseLayer = new TileLayer({
             source: new XYZ({
                 url: 'https://t{0-7}.tianditu.gov.cn/DataServer?T=vec_w&x={x}&y={y}&l={z}&tk=' + TDT_KEY,
@@ -41,7 +50,6 @@ class LandUseApp {
             })
         });
 
-        // 中文标注层
         const labelLayer = new TileLayer({
             source: new XYZ({
                 url: 'https://t{0-7}.tianditu.gov.cn/DataServer?T=cva_w&x={x}&y={y}&l={z}&tk=' + TDT_KEY,
@@ -49,22 +57,15 @@ class LandUseApp {
             })
         });
 
-        // 区县矢量图层
         const vectorSource = new VectorSource();
         this.vectorLayer = new VectorLayer({
             source: vectorSource,
             style: new Style({
-                stroke: new Stroke({
-                    color: '#3498db',
-                    width: 1.5
-                }),
-                fill: new Fill({
-                    color: 'rgba(52, 152, 219, 0.1)'
-                })
+                stroke: new Stroke({ color: '#3498db', width: 1.5 }),
+                fill: new Fill({ color: 'rgba(52, 152, 219, 0.1)' })
             })
         });
 
-        // 中国区域视图约束
         const chinaExtent = [
             ...fromLonLat([73.0, 18.0]),
             ...fromLonLat([135.0, 54.0])
@@ -91,22 +92,17 @@ class LandUseApp {
     async loadVectorData() {
         try {
             const response = await fetch('/counties.geojson');
-            if (!response.ok) {
-                throw new Error('矢量数据加载失败');
-            }
+            if (!response.ok) throw new Error('矢量数据加载失败');
 
             const geoJsonData = await response.json();
-
             const features = new GeoJSON().readFeatures(geoJsonData, {
                 featureProjection: 'EPSG:3857',
                 dataProjection: 'EPSG:4326'
             });
 
             this.vectorLayer.getSource().addFeatures(features);
+            console.log('矢量数据加载完成，要素数量: ' + features.length);
 
-            console.log(`矢量数据加载完成，要素数量: ${features.length}`);
-
-            // 自适应视图到数据范围
             const extent = this.vectorLayer.getSource().getExtent();
             if (extent && extent[0] !== Infinity) {
                 this.map.getView().fit(extent, {
@@ -121,11 +117,8 @@ class LandUseApp {
     }
 }
 
-// 启动应用
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        new LandUseApp();
-    });
+    document.addEventListener('DOMContentLoaded', () => { new LandUseApp(); });
 } else {
     new LandUseApp();
 }

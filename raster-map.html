@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>三期土地利用栅格地图</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.3.0/ol.css" />
+    <link rel="stylesheet" href="/src/raster-map.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>三期土地利用栅格地图</h1>
+            <p>1980年 | 2000年 | 2020年</p>
+        </div>
+        <button id="back-to-main" class="back-btn">返回主系统</button>
+    </header>
+
+    <div class="main-container">
+        <aside class="control-panel">
+            <div class="control-section">
+                <h3>地图图层控制</h3>
+                <div class="layer-control">
+                    <div class="layer-item active" data-layer="vector">
+                        <div class="layer-header">
+                            <span class="layer-title">区县边界</span>
+                            <div class="layer-toggle active" data-layer="vector"></div>
+                        </div>
+                        <div class="layer-info">
+                            <span>数据源：本地GeoJSON</span>
+                            <span>要素：2870个</span>
+                        </div>
+                    </div>
+
+                    <div class="layer-item active" data-layer="raster1980">
+                        <div class="layer-header">
+                            <span class="layer-title">1980年土地利用</span>
+                            <div class="layer-toggle active" data-layer="raster1980"></div>
+                        </div>
+                        <div class="layer-info">
+                            <span>数据源：GeoServer</span>
+                            <span>分辨率：30m</span>
+                        </div>
+                        <div class="layer-opacity">
+                            <label style="font-size: 0.85rem; color: #666;">透明度</label>
+                            <input type="range" min="0" max="100" value="70" class="opacity-slider" data-layer="raster1980">
+                        </div>
+                    </div>
+
+                    <div class="layer-item active" data-layer="raster2000">
+                        <div class="layer-header">
+                            <span class="layer-title">2000年土地利用</span>
+                            <div class="layer-toggle active" data-layer="raster2000"></div>
+                        </div>
+                        <div class="layer-info">
+                            <span>数据源：GeoServer</span>
+                            <span>分辨率：30m</span>
+                        </div>
+                        <div class="layer-opacity">
+                            <label style="font-size: 0.85rem; color: #666;">透明度</label>
+                            <input type="range" min="0" max="100" value="70" class="opacity-slider" data-layer="raster2000">
+                        </div>
+                    </div>
+
+                    <div class="layer-item active" data-layer="raster2020">
+                        <div class="layer-header">
+                            <span class="layer-title">2020年土地利用</span>
+                            <div class="layer-toggle active" data-layer="raster2020"></div>
+                        </div>
+                        <div class="layer-info">
+                            <span>数据源：GeoServer</span>
+                            <span>分辨率：30m</span>
+                        </div>
+                        <div class="layer-opacity">
+                            <label style="font-size: 0.85rem; color: #666;">透明度</label>
+                            <input type="range" min="0" max="100" value="70" class="opacity-slider" data-layer="raster2020">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h3>地图操作</h3>
+                <div style="display: grid; gap: 10px;">
+                    <button id="reset-view" style="width: 100%; padding: 10px; background: #2c3e50; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
+                        重置视图
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <div class="map-container">
+            <div id="raster-map"></div>
+        </div>
+    </div>
+
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <p id="loading-text">正在加载地图数据...</p>
+    </div>
+
+    <script type="module" src="/src/raster-map.js"></script>
+</body>
+</html>
