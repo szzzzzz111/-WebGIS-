@@ -4,12 +4,15 @@ import logging
 import time
 import psutil
 import os
+from collections import OrderedDict
 
 # 创建API蓝图
 api_bp = Blueprint('api', __name__)
 
 # 记录服务启动时间
 _start_time = time.time()
+_transition_matrix_cache = OrderedDict()
+_transition_matrix_cache_limit = 128
 
 def _json_error(message, status_code=400, **extra):
     """统一API错误返回格式，便于前端联调和接口测试。"""
@@ -41,6 +44,20 @@ def _parse_county_id(required=False):
             return None, "缺少必要参数: county_id"
         return None, None
     return county_id.strip(), None
+
+def _get_cached_transition_matrix(cache_key):
+    """读取转移矩阵缓存，并将命中项移动到末尾。"""
+    matrix = _transition_matrix_cache.get(cache_key)
+    if matrix is not None:
+        _transition_matrix_cache.move_to_end(cache_key)
+    return matrix
+
+def _cache_transition_matrix(cache_key, matrix):
+    """保存转移矩阵缓存，并限制缓存数量。"""
+    _transition_matrix_cache[cache_key] = matrix
+    _transition_matrix_cache.move_to_end(cache_key)
+    while len(_transition_matrix_cache) > _transition_matrix_cache_limit:
+        _transition_matrix_cache.popitem(last=False)
 
 @api_bp.route('/landuse', methods=['GET'])
 def get_landuse_data_route():
@@ -209,15 +226,30 @@ def get_transition_matrix_route():
         400: 参数错误
         404: 数据不足
     """
-    county_id = request.args.get('county_id', type=str)
-    start_year = request.args.get('start_year', type=int)
-    end_year = request.args.get('end_year', type=int)
+    county_id, county_error = _parse_county_id(required=True)
+    if county_error:
+        return _json_error(county_error, 400)
 
-    if not all([county_id, start_year, end_year]):
-        return jsonify({'error': '缺少必要参数: county_id, start_year, end_year'}), 400
+    start_year, start_error = _parse_int_arg('start_year', required=True)
+    if start_error:
+        return _json_error(start_error, 400)
+
+    end_year, end_error = _parse_int_arg('end_year', required=True)
+    if end_error:
+        return _json_error(end_error, 400)
 
     if start_year >= end_year:
-        return jsonify({"error": "start_year must be less than end_year"}), 400
+        return _json_error("start_year must be less than end_year", 400)
+
+    cache_key = (county_id, start_year, end_year)
+    cached_matrix = _get_cached_transition_matrix(cache_key)
+    if cached_matrix is not None:
+        return jsonify({
+            'county_id': county_id,
+            'period': f"{start_year}-{end_year}",
+            'transition_matrix': cached_matrix,
+            'cached': True
+        }), 200
 
     data_processor = current_app.data_processor
     land_use_analyzer = current_app.land_use_analyzer
@@ -228,14 +260,16 @@ def get_transition_matrix_route():
 
     if not start_data or not end_data:
         logging.warning(f"Not enough data to calculate transition matrix for county_id={county_id} between {start_year} and {end_year}")
-        return jsonify({'error': f"Not enough data to calculate transition matrix for county {county_id} between {start_year} and {end_year}"}), 404
+        return _json_error(f"Not enough data to calculate transition matrix for county {county_id} between {start_year} and {end_year}", 404)
 
     transition_matrix = land_use_analyzer.land_use_transition_matrix(start_data, end_data)
+    _cache_transition_matrix(cache_key, transition_matrix)
 
     return jsonify({
         'county_id': county_id,
         'period': f"{start_year}-{end_year}",
-        'transition_matrix': transition_matrix
+        'transition_matrix': transition_matrix,
+        'cached': False
     }), 200
 
 @api_bp.route('/health', methods=['GET'])
@@ -387,6 +421,7 @@ def upload_raster():
         # 5. 重新加载数据到内存（关键：让前端能立即查询到新数据）
         logging.info("重新加载数据到内存...")
         data_processor.reload_data()
+        _transition_matrix_cache.clear()
         
         # 6. 验证数据是否已更新
         available_years = data_processor.get_available_years()

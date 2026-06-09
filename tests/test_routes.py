@@ -3,11 +3,17 @@ from flask import json
 from src.app import app
 from src.config import Config
 from src.core.models import DataProcessor, LandUseAnalyzer
+from src.api.routes import (
+    _cache_transition_matrix,
+    _get_cached_transition_matrix,
+    _transition_matrix_cache,
+)
 from unittest.mock import patch
 
 class TestLandUseRoutes(unittest.TestCase):
 
     def setUp(self):
+        _transition_matrix_cache.clear()
         self.app = app.test_client()
         self.app.testing = True
 
@@ -25,6 +31,14 @@ class TestLandUseRoutes(unittest.TestCase):
             app.config['data_processor'] = DataProcessor()
             app.config['land_use_analyzer'] = LandUseAnalyzer()
             app.config['landuse_data'] = self.mock_landuse_data
+
+    def test_transition_matrix_cache(self):
+        cache_key = ('110101', 1980, 2000)
+        matrix = {'耕地': {'耕地': 80.0}}
+
+        _cache_transition_matrix(cache_key, matrix)
+
+        self.assertEqual(_get_cached_transition_matrix(cache_key), matrix)
 
     def test_get_landuse_data_success(self):
         response = self.app.get('/api/landuse?county_id=110101&year=1980')
