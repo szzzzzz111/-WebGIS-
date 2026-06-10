@@ -31,19 +31,54 @@
                     </section>
 
                     <section class="control-section">
-                        <h4>地图信息</h4>
-                        <div style="font-size:0.85rem;color:#666;line-height:1.8;">
-                            <p>底图：天地图在线服务</p>
-                            <p>矢量数据：全国区县边界</p>
-                            <p>数据来源：本地GeoJSON</p>
-                            <p>要素数量：2,870个</p>
+                        <h4>区县信息</h4>
+                        <div id="county-info" style="background: #f8f9fa; padding: 15px; border-radius: 6px; min-height: 80px; border: 1px solid #e0e0e0;">
+                            <p id="county-placeholder" style="color: #999; font-style: italic; font-size: 0.85rem; margin: 0; text-align: center; line-height: 1.5;">
+                                点击地图选择区县
+                            </p>
+                            <div id="county-details" style="display: none;">
+                                <p style="margin-bottom: 8px; font-size: 0.85rem;">
+                                    <span style="font-weight: 600; color: #2c3e50;">区县名称:</span>
+                                    <span id="county-name" style="color: #3498db; font-weight: 500; margin-left: 5px;">-</span>
+                                </p>
+                                <p style="font-size: 0.85rem;">
+                                    <span style="font-weight: 600; color: #2c3e50;">总面积:</span>
+                                    <span id="landuse-total" style="color: #e74c3c; font-weight: bold; margin-left: 5px;">-</span>
+                                    <span style="color: #666;">平方公里</span>
+                                </p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="control-section">
+                        <h4>时间维度</h4>
+                        <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; border: 1px solid #e0e0e0;">
+                            <p style="margin: 0; font-size: 0.9rem; color: #2c3e50;">
+                                <span style="font-weight: 600;">当前分析时间段</span>
+                                <span id="current-period-display" style="color: #3498db; font-weight: bold; margin-left: 5px;">1980-2020</span>
+                            </p>
                         </div>
                     </section>
                 </div>
             </aside>
 
-            <div class="map-area">
-                <div id="map" class="map"></div>
+            <div class="main-content">
+                <div class="map-area">
+                    <div id="map" class="map"></div>
+                </div>
+
+                <div class="chart-area">
+                    <div class="chart-container">
+                        <div class="chart-item">
+                            <h4>土地利用结构</h4>
+                            <canvas id="landuse-chart"></canvas>
+                        </div>
+                        <div class="chart-item">
+                            <h4>变化趋势分析</h4>
+                            <canvas id="change-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
