@@ -59,6 +59,67 @@ def _cache_transition_matrix(cache_key, matrix):
     while len(_transition_matrix_cache) > _transition_matrix_cache_limit:
         _transition_matrix_cache.popitem(last=False)
 
+def _sum_landuse_by_year(landuse_data_storage, county_ids):
+    """按年份和地类汇总多个区县的土地利用面积。"""
+    aggregated = {}
+    for county_id in county_ids:
+        for year, land_data in landuse_data_storage.get(county_id, {}).items():
+            year_key = str(year)
+            aggregated.setdefault(year_key, {})
+            for land_type, area in land_data.items():
+                aggregated[year_key][land_type] = round(
+                    aggregated[year_key].get(land_type, 0.0) + float(area),
+                    4
+                )
+    return dict(sorted(aggregated.items(), key=lambda item: int(item[0])))
+
+def _sum_transition_matrices(matrices):
+    """逐单元格累加多个区县的转移矩阵。"""
+    result = {}
+    for matrix in matrices:
+        for from_type, row in matrix.items():
+            result.setdefault(from_type, {})
+            for to_type, area in row.items():
+                result[from_type][to_type] = round(
+                    result[from_type].get(to_type, 0.0) + float(area),
+                    4
+                )
+    return {
+        from_type: dict(sorted(row.items()))
+        for from_type, row in sorted(result.items())
+    }
+
+def _parse_composite_payload():
+    """校验复合分析请求体。"""
+    payload = request.get_json(silent=True) or {}
+    county_ids = payload.get("county_ids")
+    start_year = payload.get("start_year")
+    end_year = payload.get("end_year")
+
+    if not isinstance(county_ids, list) or not county_ids:
+        return None, "county_ids 必须是非空数组"
+
+    cleaned_county_ids = []
+    for county_id in county_ids:
+        if not isinstance(county_id, str) or not county_id.strip():
+            return None, "county_ids 中不能包含空值"
+        cleaned_county_ids.append(county_id.strip())
+
+    try:
+        start_year = int(start_year)
+        end_year = int(end_year)
+    except (TypeError, ValueError):
+        return None, "start_year 和 end_year 必须为整数"
+
+    if start_year >= end_year:
+        return None, "start_year must be less than end_year"
+
+    return {
+        "county_ids": cleaned_county_ids,
+        "start_year": start_year,
+        "end_year": end_year
+    }, None
+
 @api_bp.route('/landuse', methods=['GET'])
 def get_landuse_data_route():
     """
@@ -270,6 +331,79 @@ def get_transition_matrix_route():
         'period': f"{start_year}-{end_year}",
         'transition_matrix': transition_matrix,
         'cached': False
+    }), 200
+
+@api_bp.route('/composite-analysis', methods=['POST'])
+def composite_analysis_route():
+    """
+    多区县复合分析接口。
+
+    Request JSON:
+        {
+            "county_ids": ["156420704", "156130626"],
+            "start_year": 1980,
+            "end_year": 2020
+        }
+
+    Returns:
+        多区县土地利用面积汇总、基于汇总面积重新计算的变化指数、
+        以及逐区县转移矩阵相加后的复合转移矩阵。
+    """
+    payload, payload_error = _parse_composite_payload()
+    if payload_error:
+        return _json_error(payload_error, 400)
+
+    county_ids = payload["county_ids"]
+    start_year = payload["start_year"]
+    end_year = payload["end_year"]
+
+    data_processor = current_app.data_processor
+    land_use_analyzer = current_app.land_use_analyzer
+    landuse_data_storage = data_processor.get_aggregated_landuse_data()
+
+    missing_counties = [
+        county_id for county_id in county_ids
+        if county_id not in landuse_data_storage
+    ]
+    if missing_counties:
+        return _json_error("部分区县不存在", 404, missing_counties=missing_counties)
+
+    aggregated_landuse = _sum_landuse_by_year(landuse_data_storage, county_ids)
+    start_data = aggregated_landuse.get(str(start_year), {})
+    end_data = aggregated_landuse.get(str(end_year), {})
+    if not start_data or not end_data:
+        return _json_error(
+            f"Not enough data to calculate composite analysis between {start_year} and {end_year}",
+            404
+        )
+
+    change_indices = land_use_analyzer.calculate_change_indices(
+        start_data,
+        end_data,
+        end_year - start_year
+    )
+
+    matrices = []
+    for county_id in county_ids:
+        county_start_data = landuse_data_storage[county_id].get(start_year, {})
+        county_end_data = landuse_data_storage[county_id].get(end_year, {})
+        if not county_start_data or not county_end_data:
+            return _json_error(
+                f"Not enough data to calculate transition matrix for county {county_id}",
+                404
+            )
+        matrices.append(
+            land_use_analyzer.land_use_transition_matrix(
+                county_start_data,
+                county_end_data
+            )
+        )
+
+    return jsonify({
+        "counties": county_ids,
+        "aggregated_landuse": aggregated_landuse,
+        "change_indices": change_indices,
+        "transition_matrix": _sum_transition_matrices(matrices)
     }), 200
 
 @api_bp.route('/health', methods=['GET'])
