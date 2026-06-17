@@ -67,6 +67,8 @@ body {
     flex: 1;
     overflow-y: auto;
     padding: 1rem 1.5rem;
+    display: flex;
+    flex-direction: column;
 }
 
 .control-section {
@@ -142,4 +144,114 @@ body {
     width: 100% !important;
     height: 100% !important;
     min-height: 120px;
+}
+
+/* 变化指数网格 */
+.indices-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 2px;
+}
+
+.index-item {
+    background: white;
+    padding: 8px;
+    border-radius: 6px;
+    border-left: 4px solid #3498db;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.index-item.important {
+    grid-column: 1 / -1;
+    text-align: center;
+    border-left-color: #2c3e50;
+}
+
+.index-item.positive { border-left-color: #27ae60; }
+.index-item.negative { border-left-color: #e74c3c; }
+.index-item.neutral { border-left-color: #f39c12; }
+
+.index-item label {
+    display: block;
+    font-size: 0.75rem;
+    color: #666;
+    margin-bottom: 2px;
+}
+
+.index-item .value {
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+/* 转移矩阵表格 */
+.matrix-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.matrix-table th,
+.matrix-table td {
+    border: 1px solid #ddd;
+    padding: 4px;
+    text-align: center;
+    min-width: 40px;
+}
+
+.matrix-table th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.matrix-table .row-header {
+    position: sticky;
+    left: 0;
+    background-color: #f8f9fa;
+    z-index: 5;
+    font-weight: bold;
+}
+
+.matrix-table .no-change {
+    background-color: rgba(52, 152, 219, 0.15);
+}
+
+.matrix-table .changed {
+    background-color: rgba(231, 76, 60, 0.15);
+    font-weight: bold;
+}
+
+.matrix-table .zero {
+    background-color: #f9f9f9;
+    color: #999;
+}
+
+/* 图例 */
+.matrix-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 10px;
+    font-size: 10px;
+    color: #666;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    border: 1px solid #ddd;
 }
