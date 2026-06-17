@@ -2,11 +2,13 @@
 .env
 venv/
 __pycache__/
+**/__pycache__/
 *.pyc
 *.log
 .DS_Store
 
 # large generated data and local databases
+data/processed_landuse.csv
 data/raster/
 data/uploads/
 data/vector/
