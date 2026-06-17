@@ -1,0 +1,121 @@
+<PAMDataset>
+  <PAMRasterBand band="1">
+    <Description>ld2000</Description>
+    <GDALRasterAttributeTable tableType="thematic">
+      <FieldDefn index="0">
+        <Name>VALUE</Name>
+        <Type typeAsString="Integer">0</Type>
+        <Usage usageAsString="MinMax">5</Usage>
+      </FieldDefn>
+      <FieldDefn index="1">
+        <Name>COUNT</Name>
+        <Type typeAsString="Integer">0</Type>
+        <Usage usageAsString="PixelCount">1</Usage>
+      </FieldDefn>
+      <Row index="0">
+        <F>11</F>
+        <F>467023</F>
+      </Row>
+      <Row index="1">
+        <F>12</F>
+        <F>1335633</F>
+      </Row>
+      <Row index="2">
+        <F>21</F>
+        <F>1366714</F>
+      </Row>
+      <Row index="3">
+        <F>22</F>
+        <F>485945</F>
+      </Row>
+      <Row index="4">
+        <F>23</F>
+        <F>378926</F>
+      </Row>
+      <Row index="5">
+        <F>24</F>
+        <F>48405</F>
+      </Row>
+      <Row index="6">
+        <F>31</F>
+        <F>734733</F>
+      </Row>
+      <Row index="7">
+        <F>32</F>
+        <F>1035714</F>
+      </Row>
+      <Row index="8">
+        <F>33</F>
+        <F>979368</F>
+      </Row>
+      <Row index="9">
+        <F>41</F>
+        <F>44280</F>
+      </Row>
+      <Row index="10">
+        <F>42</F>
+        <F>79703</F>
+      </Row>
+      <Row index="11">
+        <F>43</F>
+        <F>45407</F>
+      </Row>
+      <Row index="12">
+        <F>44</F>
+        <F>45394</F>
+      </Row>
+      <Row index="13">
+        <F>45</F>
+        <F>5716</F>
+      </Row>
+      <Row index="14">
+        <F>46</F>
+        <F>70894</F>
+      </Row>
+      <Row index="15">
+        <F>51</F>
+        <F>38601</F>
+      </Row>
+      <Row index="16">
+        <F>52</F>
+        <F>132748</F>
+      </Row>
+      <Row index="17">
+        <F>53</F>
+        <F>14429</F>
+      </Row>
+      <Row index="18">
+        <F>61</F>
+        <F>592344</F>
+      </Row>
+      <Row index="19">
+        <F>62</F>
+        <F>603266</F>
+      </Row>
+      <Row index="20">
+        <F>63</F>
+        <F>110473</F>
+      </Row>
+      <Row index="21">
+        <F>64</F>
+        <F>94284</F>
+      </Row>
+      <Row index="22">
+        <F>65</F>
+        <F>99054</F>
+      </Row>
+      <Row index="23">
+        <F>66</F>
+        <F>662411</F>
+      </Row>
+      <Row index="24">
+        <F>67</F>
+        <F>35696</F>
+      </Row>
+      <Row index="25">
+        <F>99</F>
+        <F>1826</F>
+      </Row>
+    </GDALRasterAttributeTable>
+  </PAMRasterBand>
+</PAMDataset>
