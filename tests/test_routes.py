@@ -4,8 +4,12 @@ from src.app import app
 from src.config import Config
 from src.core.models import DataProcessor, LandUseAnalyzer
 from src.api.routes import (
+    _api_docs_payload,
     _cache_transition_matrix,
     _get_cached_transition_matrix,
+    _is_tif_filename,
+    _sum_landuse_by_year,
+    _sum_transition_matrices,
     _transition_matrix_cache,
 )
 from unittest.mock import patch
@@ -39,6 +43,47 @@ class TestLandUseRoutes(unittest.TestCase):
         _cache_transition_matrix(cache_key, matrix)
 
         self.assertEqual(_get_cached_transition_matrix(cache_key), matrix)
+
+    def test_sum_landuse_by_year(self):
+        source = {
+            '110101': {
+                1980: {'耕地': 100.0, '建设用地': 50.0},
+                2020: {'耕地': 80.0}
+            },
+            '110102': {
+                1980: {'耕地': 30.0, '林地': 20.0},
+                2020: {'耕地': 40.0}
+            }
+        }
+
+        result = _sum_landuse_by_year(source, ['110101', '110102'])
+
+        self.assertEqual(result['1980']['耕地'], 130.0)
+        self.assertEqual(result['1980']['建设用地'], 50.0)
+        self.assertEqual(result['1980']['林地'], 20.0)
+        self.assertEqual(result['2020']['耕地'], 120.0)
+
+    def test_sum_transition_matrices(self):
+        matrices = [
+            {'耕地': {'耕地': 80.0, '建设用地': 20.0}},
+            {'耕地': {'耕地': 40.0, '建设用地': 10.0}}
+        ]
+
+        result = _sum_transition_matrices(matrices)
+
+        self.assertEqual(result['耕地']['耕地'], 120.0)
+        self.assertEqual(result['耕地']['建设用地'], 30.0)
+
+    def test_is_tif_filename(self):
+        self.assertTrue(_is_tif_filename('2025.tif'))
+        self.assertTrue(_is_tif_filename('2025.TIFF'))
+        self.assertFalse(_is_tif_filename('2025.png'))
+
+    def test_api_docs_payload(self):
+        docs = _api_docs_payload()
+
+        self.assertIn('endpoints', docs)
+        self.assertTrue(any(item['path'] == '/api/composite-analysis' for item in docs['endpoints']))
 
     def test_get_landuse_data_success(self):
         response = self.app.get('/api/landuse?county_id=110101&year=1980')

@@ -120,6 +120,68 @@ def _parse_composite_payload():
         "end_year": end_year
     }, None
 
+def _is_tif_filename(filename):
+    """校验上传文件是否为GeoTIFF文件名。"""
+    return isinstance(filename, str) and filename.lower().endswith((".tif", ".tiff"))
+
+def _api_docs_payload():
+    """返回后端核心接口说明，便于前端联调和文档整理。"""
+    return {
+        "version": "1.1.0",
+        "endpoints": [
+            {
+                "method": "GET",
+                "path": "/api/landuse",
+                "description": "查询区县土地利用面积数据",
+                "params": ["county_id", "year"]
+            },
+            {
+                "method": "GET",
+                "path": "/api/available-years",
+                "description": "查询系统可用年份"
+            },
+            {
+                "method": "GET",
+                "path": "/api/change-indices",
+                "description": "计算指定区县的土地利用变化指数",
+                "params": ["county_id", "start_year", "end_year"]
+            },
+            {
+                "method": "GET",
+                "path": "/api/transition-matrix",
+                "description": "计算指定区县的土地利用转移矩阵",
+                "params": ["county_id", "start_year", "end_year"]
+            },
+            {
+                "method": "POST",
+                "path": "/api/composite-analysis",
+                "description": "多区县复合分析",
+                "json_body": ["county_ids", "start_year", "end_year"]
+            },
+            {
+                "method": "POST",
+                "path": "/api/upload-raster",
+                "description": "上传新年份GeoTIFF栅格数据",
+                "form_data": ["file", "year"]
+            },
+            {
+                "method": "GET",
+                "path": "/api/health",
+                "description": "后端健康检查"
+            },
+            {
+                "method": "GET",
+                "path": "/api/stats",
+                "description": "后端数据统计信息"
+            }
+        ],
+        "error_format": {
+            "error": "错误摘要",
+            "details": "错误详情",
+            "code": "HTTP状态码"
+        }
+    }
+
 @api_bp.route('/landuse', methods=['GET'])
 def get_landuse_data_route():
     """
@@ -406,6 +468,11 @@ def composite_analysis_route():
         "transition_matrix": _sum_transition_matrices(matrices)
     }), 200
 
+@api_bp.route('/docs', methods=['GET'])
+def api_docs_route():
+    """提供后端接口清单，供前端联调和课程文档引用。"""
+    return jsonify(_api_docs_payload()), 200
+
 @api_bp.route('/health', methods=['GET'])
 def health_check():
     """
@@ -518,20 +585,20 @@ def upload_raster():
     try:
         # 1. 检查文件
         if 'file' not in request.files:
-            return jsonify({'error': '未上传文件'}), 400
+            return _json_error('未上传文件', 400)
         
         file = request.files['file']
         year = request.form.get('year', type=int)
         
         if not file or file.filename == '':
-            return jsonify({'error': '文件为空'}), 400
+            return _json_error('文件为空', 400)
         
         if not year:
-            return jsonify({'error': '缺少参数: year'}), 400
+            return _json_error('缺少参数: year', 400)
         
         # 2. 验证文件格式
-        if not file.filename.endswith('.tif'):
-            return jsonify({'error': '文件格式错误，仅支持GeoTIFF(.tif)格式'}), 400
+        if not _is_tif_filename(file.filename):
+            return _json_error('文件格式错误，仅支持GeoTIFF(.tif/.tiff)格式', 400)
         
         # 3. 保存文件到独立的上传目录
         from src.config import Config
@@ -574,7 +641,7 @@ def upload_raster():
         
     except Exception as e:
         logging.error(f"上传数据失败: {e}")
-        return jsonify({'error': str(e)}), 500
+        return _json_error(str(e), 500)
 
 @api_bp.route('/available-years', methods=['GET'])
 def get_available_years():
@@ -601,7 +668,7 @@ def get_available_years():
         }), 200
     except Exception as e:
         logging.error(f"获取年份列表失败: {e}")
-        return jsonify({'error': str(e)}), 500
+        return _json_error(str(e), 500)
 
 @api_bp.route('/test-upload', methods=['GET'])
 def serve_test_upload_page():
