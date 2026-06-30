@@ -8,8 +8,8 @@ export default defineConfig({
     proxy: {
       '/geoserver': {
         // target: 'http://192.168.71.1:8080',
-        target: 'http://10.19.243.244:8080',
-        // target: 'http://192.168.137.1:8080',
+        // target: 'http://10.18.236.18:8080',
+        target: 'http://10.19.241.49:8080',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/geoserver/, '/geoserver')
       }

@@ -14,7 +14,7 @@ import Chart from 'chart.js/auto';
 class LandUseApp {
     constructor() {
         // this.API_BASE_URL = 'http://192.168.137.45:8765/api';
-        this.API_BASE_URL = 'http://10.19.242.155:8765/api';
+        this.API_BASE_URL = 'http://10.19.241.44:8765/api';
         this.map = null;
         this.landuseChart = null;
         this.changeChart = null;
@@ -29,6 +29,9 @@ class LandUseApp {
         this.startYear = 1980;
         this.endYear = 2020;
         this.availableYears = [];
+        this.selectedCounties = [];
+        this.isCompositeMode = false;
+        this.compositeData = null;
         
         this.init();
     }
@@ -396,6 +399,35 @@ class LandUseApp {
             });
         }
         
+
+        const browseFileBtn = document.getElementById('browse-file');
+        const fileInput = document.getElementById('raster-file');
+        if (browseFileBtn && fileInput) {
+            browseFileBtn.addEventListener('click', () => {
+                fileInput.click();
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                const fileName = e.target.files[0]?.name || '未选择文件';
+                console.log('选择的文件:', fileName);
+                
+                const yearMatch = fileName.match(/\b(19|20)\d{2}\b/);
+                if (yearMatch) {
+                    const yearInput = document.getElementById('upload-year');
+                    if (yearInput) {
+                        yearInput.value = yearMatch[0];
+                    }
+                }
+            });
+        }
+        
+        const uploadRasterBtn = document.getElementById('upload-raster');
+        if (uploadRasterBtn) {
+            uploadRasterBtn.addEventListener('click', () => {
+                this.handleUploadRaster();
+            });
+        }
+        
         console.log('事件绑定完成');
     }
     
@@ -404,6 +436,19 @@ class LandUseApp {
     toggleTransitionMatrix() {
         if (!this.selectedCounty) {
             this.showError('请先选择区县');
+            return;
+        }
+        
+        if (this.isCompositeMode) {
+            if (this.matrixData && this.matrixData.transition_matrix) {
+                if (this.matrixVisible) {
+                    this.hideStandaloneMatrix();
+                } else {
+                    this.showStandaloneMatrix();
+                }
+            } else {
+                this.showError('复合模式转移矩阵数据暂不可用');
+            }
             return;
         }
         
@@ -811,6 +856,9 @@ class LandUseApp {
                 this.matrixData = matrixData;
                 this.updateMatrixButtonState(true, false);
                 this.updateMatrixPeriodBadge();
+                if (this.matrixVisible) {
+                    this.createStandaloneMatrix(this.matrixData);
+                }
             } catch (matrixError) {
                 console.warn('转移矩阵数据加载失败:', matrixError);
                 this.matrixData = null;
@@ -839,13 +887,38 @@ class LandUseApp {
                 return;
             }
             
-            this.selectedCounty = { id: countyId, name: countyName };
+            if (event.originalEvent && event.originalEvent.shiftKey) {
+                const idx = this.selectedCounties.findIndex(c => c.id === countyId);
+                if (idx >= 0) {
+                    this.selectedCounties.splice(idx, 1);
+                    if (this.selectedCounties.length === 0) {
+                        this.selectedCounty = null;
+                        this.updateVectorLayerStyle();
+                        this.clearCountyInfo();
+                        return;
+                    }
+                } else {
+                    this.selectedCounties.push({ id: countyId, name: countyName });
+                }
+            } else {
+                this.selectedCounties = [{ id: countyId, name: countyName }];
+            }
+            
+            this.selectedCounty = this.selectedCounties[0];
+            this.isCompositeMode = this.selectedCounties.length > 1;
             this.updateVectorLayerStyle();
             
-            this.loadCountyData(this.selectedCounty);
+            if (this.isCompositeMode) {
+                this.loadCompositeData();
+            } else {
+                this.loadCountyData(this.selectedCounty);
+            }
             
         } else {
+            this.selectedCounties = [];
             this.selectedCounty = null;
+            this.isCompositeMode = false;
+            this.compositeData = null;
             this.updateVectorLayerStyle();
             this.clearCountyInfo();
         }
@@ -869,20 +942,20 @@ class LandUseApp {
     updateVectorLayerStyle() {
         const source = this.vectorLayer.getSource();
         const features = source.getFeatures();
+        const selectedIds = this.selectedCounties.map(c => c.id);
         
         features.forEach(feature => {
+            const fid = this.getCountyId(feature);
+            const isSelected = selectedIds.includes(fid);
+            
             const style = new Style({
                 stroke: new Stroke({
-                    color: this.selectedCounty && this.getCountyId(feature) === this.selectedCounty.id 
-                        ? '#e74c3c' 
-                        : '#3498db',
-                    width: this.selectedCounty && this.getCountyId(feature) === this.selectedCounty.id 
-                        ? 3 
-                        : 1.5
+                    color: isSelected ? '#e74c3c' : '#3498db',
+                    width: isSelected ? 3 : 1.5
                 }),
                 fill: new Fill({
-                    color: this.selectedCounty && this.getCountyId(feature) === this.selectedCounty.id 
-                        ? 'rgba(231, 76, 60, 0.2)' 
+                    color: isSelected 
+                        ? 'rgba(231, 76, 60, 0.15)' 
                         : 'rgba(52, 152, 219, 0.1)'
                 })
             });
@@ -895,14 +968,22 @@ class LandUseApp {
         const countyNameElem = document.getElementById('county-name');
         const countyIdElem = document.getElementById('county-id');
         
-        if (countyNameElem) countyNameElem.textContent = county.name;
-        if (countyIdElem) countyIdElem.textContent = county.id;
+        if (this.isCompositeMode && this.selectedCounties.length > 1) {
+            if (countyNameElem) countyNameElem.textContent = county.name + ' + ' + this.selectedCounties.slice(1).map(c => c.name).join(' + ');
+            if (countyIdElem) countyIdElem.textContent = this.selectedCounties.map(c => c.id).join(', ');
+        } else {
+            if (countyNameElem) countyNameElem.textContent = county.name;
+            if (countyIdElem) countyIdElem.textContent = county.id;
+        }
         
         document.getElementById('county-placeholder').style.display = 'none';
         document.getElementById('county-details').style.display = 'block';
     }
     
     clearCountyInfo() {
+        this.selectedCounties = [];
+        this.isCompositeMode = false;
+        this.compositeData = null;
         var cp = document.getElementById('county-placeholder'); if(cp) cp.style.display = 'block';
         var cd = document.getElementById('county-details'); if(cd) cd.style.display = 'none';
         
@@ -996,7 +1077,90 @@ class LandUseApp {
         return result;
     }
     
-    updateCharts(landuseData) {
+async loadCompositeData() {
+        try {
+            const names = this.selectedCounties.map(c => c.name).join("、");
+            this.showLoading(`正在加载 ${names} 复合数据...`);
+            console.log("开始加载复合分析数据:", this.selectedCounties.map(c => c.id));
+            
+            this.updateCountyInfo(this.selectedCounties[0]);
+            
+            const countyIds = this.selectedCounties.map(c => c.id);
+            
+            const response = await fetch(this.API_BASE_URL + "/composite-analysis", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    county_ids: countyIds,
+                    start_year: this.startYear,
+                    end_year: this.endYear
+                })
+            });
+            
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`复合分析请求失败: ${response.status} - ${errText}`);
+            }
+            
+            const data = await response.json();
+            this.compositeData = data;
+            
+            // 用合成后的数据更新图表
+            const currentYearData = {};
+            const landTypes = ["耕地", "林地", "草地", "水域", "建设用地", "未利用地", "海洋"];
+            if (data.aggregated_landuse && data.aggregated_landuse[this.currentYear]) {
+                currentYearData.landuse_data = data.aggregated_landuse[this.currentYear];
+            } else {
+                currentYearData.landuse_data = {};
+                landTypes.forEach(t => currentYearData.landuse_data[t] = 0);
+            }
+            this.updateCharts(currentYearData);
+            
+            // 更新趋势图
+            if (data.aggregated_landuse) {
+                const allYears = Object.keys(data.aggregated_landuse).map(Number).sort();
+                const trendData = { trend_data: this.processTrendData(data.aggregated_landuse, allYears) };
+                this.updateStatistics(trendData);
+            }
+            
+            // 更新变化指数
+            if (data.change_indices) {
+                const wrappedIndices = { change_indices: data.change_indices };
+                this.updateChangeIndices(wrappedIndices);
+            } else {
+                const idxDisplay = document.getElementById("indices-display");
+                if (idxDisplay) idxDisplay.innerHTML = "<p class=\"placeholder\">暂无复合变化指数数据</p>";
+            }
+            
+            // 缓存转移矩阵
+            if (data.transition_matrix) {
+                this.matrixData = {
+                    transition_matrix: data.transition_matrix,
+                    county_id: countyIds.join(","),
+                    period: this.startYear + "-" + this.endYear
+                };
+                this.updateMatrixButtonState(true, false);
+                this.updateMatrixPeriodBadge();
+                if (this.matrixVisible) {
+                    this.createStandaloneMatrix(this.matrixData);
+                }
+            } else {
+                this.matrixData = null;
+                this.updateMatrixButtonState(false, false);
+            }
+            
+            this.hideLoading();
+            console.log("复合分析数据加载完成");
+            
+        } catch (error) {
+            console.error("加载复合分析数据失败:", error);
+            this.hideLoading();
+            this.showError(`复合分析失败: ${error.message}`);
+        }
+    }
+
+
+        updateCharts(landuseData) {
         if (this.landuseChart && landuseData.landuse_data) {
             const data = landuseData.landuse_data;
             this.landuseChart.data.datasets[0].data = [
@@ -1122,6 +1286,10 @@ class LandUseApp {
         this.updateMatrixPeriodBadge();
         
         if (this.selectedCounty) {
+            if (this.isCompositeMode) {
+                this.loadCompositeData();
+                return;
+            }
             const reloadData = async () => {
                 try {
                     const matrixData = await this.loadTransitionMatrix(
@@ -1154,6 +1322,12 @@ class LandUseApp {
     
     async loadChangeIndicesForSelectedCounty() {
         if (!this.selectedCounty) return;
+        
+        if (this.isCompositeMode && this.compositeData && this.compositeData.change_indices) {
+            const wrappedIndices = { change_indices: this.compositeData.change_indices };
+            this.updateChangeIndices(wrappedIndices);
+            return;
+        }
         
         try {
             const changeIndices = await this.fetchChangeIndices(
@@ -1265,6 +1439,107 @@ class LandUseApp {
             
         } else {
             indicesDisplay.innerHTML = '<p class="placeholder">暂无变化指数数据</p>';
+        }
+    }
+    
+
+    async handleUploadRaster() {
+        const fileInput = document.getElementById('raster-file');
+        const yearInput = document.getElementById('upload-year');
+        const uploadRasterBtn = document.getElementById('upload-raster');
+        
+        if (!fileInput || !yearInput || !uploadRasterBtn) {
+            this.showError('上传组件未找到');
+            return;
+        }
+        
+        const file = fileInput.files[0];
+        const year = parseInt(yearInput.value);
+        
+        if (!file) {
+            this.showError('请选择要上传的文件');
+            return;
+        }
+        
+        if (!year || year < 1900 || year > 2100) {
+            this.showError('请输入有效的年份ï¼1900-2100ï¼');
+            return;
+        }
+        
+        const fileName = file.name.toLowerCase();
+        if (!fileName.endsWith('.tif') && !fileName.endsWith('.tiff')) {
+            this.showError('请选择TIFF格式的文件ï¼.tif或.tiffï¼');
+            return;
+        }
+        
+        if (file.size > 500 * 1024 * 1024) {
+            this.showError('文件大小不能超过500MB');
+            return;
+        }
+        
+        uploadRasterBtn.disabled = true;
+        uploadRasterBtn.innerHTML = '<span class="spinner"></span> 上传中...';
+        
+        let timeoutId;
+        const controller = new AbortController();
+        
+        try {
+            this.showLoading('正在上传 ' + file.name + '...');
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('year', year.toString());
+            
+            timeoutId = setTimeout(() => controller.abort(), 60000);
+            
+            const response = await fetch(this.API_BASE_URL + '/upload-raster', {
+                method: 'POST',
+                body: formData,
+                signal: controller.signal
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error('上传失败: ' + response.status + ' - ' + errorText);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.showNotification('上传成功ï¼处理了 ' + result.counties_processed + ' 个县区', 'success');
+                
+                fileInput.value = '';
+                yearInput.value = '';
+                
+                await this.loadAvailableYears();
+                
+                if (this.selectedCounty) {
+                    if (this.isCompositeMode) {
+                        await this.loadCompositeData();
+                    } else {
+                        await this.loadCountyData(this.selectedCounty);
+                    }
+                }
+                
+            } else {
+                throw new Error(result.message || '上传处理失败');
+            }
+            
+        } catch (error) {
+            console.error('上传失败:', error);
+            
+            if (error.name === 'AbortError') {
+                this.showError('上传超时ï¼请检查网络或稍后重试');
+            } else {
+                this.showError('上传失败: ' + error.message);
+            }
+        } finally {
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
+            uploadRasterBtn.disabled = false;
+            uploadRasterBtn.textContent = '上传栅格数据';
+            this.hideLoading();
         }
     }
     
